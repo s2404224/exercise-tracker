@@ -292,12 +292,12 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--t);m
       <input class="setup-input" id="nm-name" placeholder="輸入你的名字" maxlength="8">
     </div>
     <div class="setup-field">
-      <label class="setup-label">設定 4 位數密碼</label>
-      <input class="setup-input" id="nm-pin" placeholder="●●●●" maxlength="4" type="password" inputmode="numeric">
+      <label class="setup-label">設定 4 位數密碼（選填）</label>
+      <input class="setup-input" id="nm-pin" placeholder="不設密碼可留空" maxlength="4" type="tel" pattern="[0-9]*" inputmode="numeric" autocomplete="off">
     </div>
     <div class="setup-field">
       <label class="setup-label">確認密碼</label>
-      <input class="setup-input" id="nm-pin2" placeholder="●●●●" maxlength="4" type="password" inputmode="numeric">
+      <input class="setup-input" id="nm-pin2" placeholder="不設密碼可留空" maxlength="4" type="tel" pattern="[0-9]*" inputmode="numeric" autocomplete="off">
     </div>
     <div class="macts">
       <button class="mcancel" onclick="closeAll()">取消</button>
@@ -398,14 +398,26 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--t);m
 
 <div class="ovl" id="ovlset">
   <div class="modal">
-    <div class="mtitle">成員設定</div>
-    <div class="msub">修改名稱或新增成員</div>
-    <div id="setlist"></div>
-    <div class="addrow">
-      <input id="setnew" placeholder="新成員姓名" maxlength="8">
-      <button class="addbtn" onclick="setAdd()">＋ 新增</button>
+    <div class="mtitle">個人設定</div>
+    <div class="msub">修改你的名稱或密碼</div>
+    <div class="setup-field">
+      <label class="setup-label">姓名</label>
+      <input class="setup-input" id="set-name" maxlength="8">
     </div>
-    <div class="macts" style="margin-top:14px">
+    <div style="height:1px;background:var(--b);margin:14px 0"></div>
+    <div style="font-size:11px;color:var(--t2);margin-bottom:10px">密碼設定（留空表示不改）</div>
+    <div class="setup-field">
+      <label class="setup-label">新密碼（4 位數字）</label>
+      <input class="setup-input" id="set-pin1" placeholder="輸入新密碼" maxlength="4" type="tel" pattern="[0-9]*" inputmode="numeric" autocomplete="off">
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">確認新密碼</label>
+      <input class="setup-input" id="set-pin2" placeholder="再輸入一次" maxlength="4" type="tel" pattern="[0-9]*" inputmode="numeric" autocomplete="off">
+    </div>
+    <div style="margin-top:4px;margin-bottom:4px">
+      <button onclick="removePin()" style="width:100%;padding:9px;background:transparent;border:1px solid rgba(255,82,82,.25);border-radius:6px;color:var(--red);font-size:12px;cursor:pointer;font-family:inherit;transition:background .15s" onmouseover="this.style.background='rgba(255,82,82,.08)'" onmouseout="this.style.background='transparent'">✕ 移除密碼，改回免密碼登入</button>
+    </div>
+    <div class="macts" style="margin-top:10px">
       <button class="mcancel" onclick="closeAll()">取消</button>
       <button class="mconfirm" onclick="setSave()">儲存</button>
     </div>
@@ -583,7 +595,7 @@ function renderLogin(){
       <div class="mcard-av" style="background:${c.bg};color:${c.c}">${m.name[0]}</div>
       <div class="mcard-name">${m.name}</div>
       <div class="mcard-role">${m.recorder?'★ 記錄員':'成員'}</div>
-      <div class="mcard-arr" style="font-size:12px;color:var(--t3)">${hasPin?'🔒':'🔓 未設密碼'}</div>
+      <div class="mcard-arr" style="font-size:12px;color:var(--t3)">${hasPin?'🔒':''}</div>
     </div>`;
   }).join('');
   const addCard=`<div class="mcard-add" onclick="openNewMember()">
@@ -594,13 +606,13 @@ function renderLogin(){
 }
 function openPin(id){
   const m=getM(id); if(!m) return;
+  // No PIN set → login directly, no forced setup
+  if(!m.pin||m.pin.length!==4){ doLogin(id); return; }
   pinTarget=id; pinBuf=''; pinMode='login';
   updatePinDots();
   document.getElementById('pin-err').textContent='';
-  const hasPin=m.pin&&m.pin.length===4;
-  document.getElementById('pin-title').textContent=hasPin?`${m.name} — 輸入密碼`:`${m.name} — 設定密碼`;
-  document.getElementById('pin-sub').textContent=hasPin?'請輸入你的 4 位數密碼':'尚未設定密碼，請先設定一組';
-  if(!hasPin){ pinMode='setpin'; }
+  document.getElementById('pin-title').textContent=`${m.name} — 輸入密碼`;
+  document.getElementById('pin-sub').textContent='請輸入你的 4 位數密碼';
   document.getElementById('ovl-pin').classList.add('on');
 }
 function doLogin(id){
@@ -796,33 +808,38 @@ function chWk(d){ const n=wkOff+d; if(n>0||getMon(n)<WEEK1) return; wkOff=n; ren
 
 // ── SETTINGS ─────────────────────────────
 function openSet(){
-  document.getElementById('setlist').innerHTML=D.members.map((m,i)=>{
-    const c=col(i);
-    return `<div class="serow">
-      <div class="av" style="width:28px;height:28px;font-size:11px;background:${c.bg};color:${c.c}">${m.name[0]}</div>
-      <input id="si-${m.id}" value="${m.name}" maxlength="8">
-      ${m.recorder?'<span style="font-size:10px;color:var(--t3);flex-shrink:0">記錄員</span>':`<button class="delbtn" onclick="setDel('${m.id}')">✕</button>`}
-    </div>`;
-  }).join('');
-  document.getElementById('setnew').value='';
+  const m=getM(me); if(!m) return;
+  document.getElementById('set-name').value=m.name;
+  document.getElementById('set-pin1').value='';
+  document.getElementById('set-pin2').value='';
   document.getElementById('ovlset').classList.add('on');
 }
-function setDel(id){
-  if(id===me){ toast('不能刪除自己'); return; }
-  if(D.members.length<=1){ toast('至少需要 1 位成員'); return; }
-  D.members=D.members.filter(m=>m.id!==id); openSet();
-}
-function setAdd(){
-  const nm=(document.getElementById('setnew').value||'').trim();
-  if(!nm){ toast('請輸入姓名'); return; }
-  if(D.members.length>=8){ toast('最多 8 位成員'); return; }
-  D.members.push({id:'u'+Date.now(),name:nm,recorder:false});
-  document.getElementById('setnew').value='';
-  openSet(); toast('已新增 '+nm);
-}
+function setDel(id){ /* unused but kept */ }
+function setAdd(){ /* unused but kept */ }
 function setSave(){
-  D.members.forEach(m=>{ const e=document.getElementById('si-'+m.id); if(e){ const v=e.value.trim(); if(v) m.name=v; } });
-  push().then(()=>{ closeAll(); if(me) document.getElementById('tbnm').textContent=getM(me).name||''; renderApp(); renderLogin(); toast('設定已儲存'); });
+  const m=getM(me); if(!m) return;
+  const nm=(document.getElementById('set-name').value||'').trim();
+  const p1=(document.getElementById('set-pin1').value||'').trim();
+  const p2=(document.getElementById('set-pin2').value||'').trim();
+  if(!nm){ toast('姓名不能空白'); return; }
+  // Validate PIN if user typed anything
+  if(p1||p2){
+    if(!/^\d{4}$/.test(p1)){ toast('密碼必須是 4 位數字'); return; }
+    if(p1!==p2){ toast('兩次密碼不一致'); return; }
+    m.pin=p1;
+    toast('密碼已更新 🔒');
+  } else if(p1===''&&p2===''){
+    // Leave empty to clear PIN (no password)
+    // Only clear if both fields empty and user didn't type anything
+    m.pin=m.pin||''; // keep existing
+  }
+  m.name=nm;
+  push().then(()=>{
+    closeAll();
+    document.getElementById('tbnm').textContent=m.name;
+    renderApp(); renderLogin();
+    toast('設定已儲存 ✓');
+  });
 }
 
 // ── PIN LOGIC ─────────────────────────────
@@ -847,14 +864,6 @@ function pinErr(msg){
 }
 function checkPin(){
   const m=getM(pinTarget); if(!m) return;
-  if(pinMode==='setpin'){
-    // First time setting PIN — save it and log in
-    m.pin=pinBuf;
-    push().then(()=>{ closeAll(); doLogin(pinTarget); toast('密碼設定完成 ✓'); });
-    return;
-  }
-  // Normal login
-  if(!m.pin||m.pin.length!==4){ doLogin(pinTarget); closeAll(); return; }
   if(pinBuf===m.pin){ closeAll(); doLogin(pinTarget); }
   else pinErr('密碼錯誤，請再試');
 }
@@ -868,19 +877,29 @@ function openNewMember(){
 }
 function confirmNewMember(){
   const nm=(document.getElementById('nm-name').value||'').trim();
-  const p1=document.getElementById('nm-pin').value.trim();
-  const p2=document.getElementById('nm-pin2').value.trim();
+  const p1=(document.getElementById('nm-pin').value||'').trim();
+  const p2=(document.getElementById('nm-pin2').value||'').trim();
   if(!nm){ toast('請輸入姓名'); return; }
-  if(p1.length!==4||!/^\d{4}$/.test(p1)){ toast('密碼必須是 4 位數字'); return; }
-  if(p1!==p2){ toast('兩次密碼不一致'); return; }
+  if(p1||p2){
+    if(!/^\d{4}$/.test(p1)){ toast('密碼必須是 4 位數字'); return; }
+    if(p1!==p2){ toast('兩次密碼不一致'); return; }
+  }
   if(D.members.length>=8){ toast('最多 8 位成員'); return; }
   const newId='u'+Date.now();
-  D.members.push({id:newId,name:nm,recorder:false,pin:p1});
+  D.members.push({id:newId,name:nm,recorder:false,pin:p1||''});
   push().then(()=>{ closeAll(); renderLogin(); toast(`歡迎 ${nm}！帳號已建立`); });
 }
 
+// ── REMOVE PIN ──────────────────────────
+function removePin(){
+  const m=getM(me); if(!m) return;
+  if(!confirm('確定要移除密碼嗎？移除後任何人都可以直接登入你的帳號。')) return;
+  m.pin='';
+  push().then(()=>{ closeAll(); renderLogin(); toast('密碼已移除，下次直接進入'); });
+}
+
 // expose for inline onclick
-Object.assign(window,{doLogin,doLogout,showTab,chWk,closeAll,openCk,togCk,confirmCk,doLeave,clearToday,openSet,setDel,setAdd,setSave,tapDay,openPin,pinKey,openNewMember,confirmNewMember});
+Object.assign(window,{doLogin,doLogout,showTab,chWk,closeAll,openCk,togCk,confirmCk,doLeave,clearToday,openSet,setDel,setAdd,setSave,tapDay,openPin,pinKey,openNewMember,confirmNewMember,removePin});
 
 initFB();
 </script>
