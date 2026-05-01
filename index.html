@@ -20,7 +20,7 @@
 }
 body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--t);min-height:100vh}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--b3);border-radius:2px}
-.page{display:none;min-height:100vh}
+.page{display:none;position:fixed;inset:0;overflow-y:auto;background:var(--bg)}
 .page.on{display:block}
 #pg-login{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.25rem}
 #pg-login.on{display:flex}
@@ -351,7 +351,7 @@ import { getFirestore, doc, setDoc, onSnapshot }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ── CONFIG ──────────────────────────────
-const WEEK1=new Date(2026,4,4); WEEK1.setHours(0,0,0,0);
+const WEEK1=new Date(2026,3,27); WEEK1.setHours(0,0,0,0);
 const PAY=200,MAX_PAY=600,NEED=3;
 const DAYS=['一','二','三','四','五','六','日'];
 const MEDALS=['🥇','🥈','🥉'];
@@ -424,7 +424,7 @@ function getMon(off){
   const m=new Date(t); m.setDate(t.getDate()+diff+off*7);
   return m<WEEK1?new Date(WEEK1):m;
 }
-const wkNum=mon=>Math.floor((mon-WEEK1)/(7*86400000))+1;
+const wkNum=mon=>Math.floor((mon-WEEK1)/(7*86400000));
 const wkDays=mon=>Array.from({length:7},(_,i)=>{ const d=new Date(mon); d.setDate(mon.getDate()+i); return d; });
 const wkKey=mon=>fmt(mon);
 function allWeeks(){
@@ -470,9 +470,10 @@ function pen(uid,mon,days){
 function hideLoad(){ const e=document.getElementById('loading'); e.classList.add('hide'); setTimeout(()=>e.style.display='none',300); }
 function setSdot(s){ const e=document.getElementById('sdot'); if(e) e.className='sdot '+s; }
 function showPage(id){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-  document.getElementById('pg-'+id).classList.add('on');
-  window.scrollTo(0,0);
+  document.querySelectorAll('.page').forEach(p=>{ p.classList.remove('on'); p.scrollTop=0; });
+  const el=document.getElementById('pg-'+id);
+  el.classList.add('on');
+  el.scrollTop=0;
 }
 function showTab(id){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
@@ -519,7 +520,7 @@ function renderApp(){
   const pMon=new Date(mon); pMon.setDate(mon.getDate()-7);
   document.getElementById('btn-prev').disabled=pMon<WEEK1;
   document.getElementById('btn-next').disabled=wkOff>=0;
-  document.getElementById('wklbl').textContent=`第 ${num} 週`;
+  document.getElementById('wklbl').textContent=num===0?'試用週（4/27–5/3）':`第 ${num} 週`;
   document.getElementById('wkdates').textContent=`${fmtS(days[0])}（一）— ${fmtS(days[6])}（日）`;
   document.getElementById('wkhint').textContent=(!isCur&&editable)?'📝 週一補登模式':'';
 
