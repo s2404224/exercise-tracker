@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>今天不練，明天掏錢 </title>
+<title>今天不練，明天掏錢</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -472,6 +472,7 @@ function setSdot(s){ const e=document.getElementById('sdot'); if(e) e.className=
 function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
   document.getElementById('pg-'+id).classList.add('on');
+  window.scrollTo(0,0);
 }
 function showTab(id){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
