@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>今天不練，明天掏錢💰</title>
+<title>今天不練，明天掏錢</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -45,6 +45,35 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--t);m
 .mcard-name{font-size:15px;font-weight:600}
 .mcard-role{font-size:11px;color:var(--t3)}
 .mcard-arr{font-size:16px;color:var(--t3)}
+
+/* PIN modal */
+.pin-modal{background:var(--bg2);border:1px solid var(--b2);border-radius:var(--r);padding:24px;width:100%;max-width:320px}
+.pin-title{font-size:16px;font-weight:700;margin-bottom:4px;color:var(--t)}
+.pin-sub{font-size:12px;color:var(--t2);margin-bottom:20px}
+.pin-dots{display:flex;gap:10px;justify-content:center;margin-bottom:20px}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--b2);transition:all .15s}
+.pin-dot.filled{background:var(--acc);border-color:var(--acc)}
+.pin-dot.err{background:var(--red);border-color:var(--red)}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.npbtn{padding:14px 0;background:var(--bg3);border:1px solid var(--b);border-radius:var(--rs);color:var(--t);font-size:18px;font-weight:500;cursor:pointer;transition:all .15s;font-family:'DM Mono',monospace}
+.npbtn:hover{background:var(--bg4);border-color:var(--b2)}
+.npbtn:active{transform:scale(.96)}
+.npbtn.del{font-size:14px;color:var(--t2)}
+.pin-err{font-size:12px;color:var(--red);text-align:center;min-height:16px;margin-bottom:8px}
+
+/* Add member card on login */
+.mcard-add{background:transparent;border:2px dashed var(--b2);border-radius:var(--r);padding:20px 16px;cursor:pointer;transition:all .2s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
+.mcard-add:hover{border-color:var(--acc);background:var(--acc-d)}
+.mcard-add-icon{width:52px;height:52px;border-radius:50%;background:var(--bg3);border:2px dashed var(--b2);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--t3);transition:all .2s}
+.mcard-add:hover .mcard-add-icon{border-color:var(--acc);color:var(--acc)}
+.mcard-add-lbl{font-size:14px;color:var(--t3);transition:color .2s}
+.mcard-add:hover .mcard-add-lbl{color:var(--acc)}
+
+/* New member setup modal */
+.setup-field{margin-bottom:14px}
+.setup-label{font-size:11px;color:var(--t2);margin-bottom:6px;display:block}
+.setup-input{width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--b);border-radius:var(--rs);color:var(--t);font-size:14px;font-family:inherit;outline:none;transition:border-color .15s}
+.setup-input:focus{border-color:var(--acc)}
 
 /* TOPBAR */
 .topbar{position:sticky;top:0;z-index:50;background:rgba(12,12,12,.95);backdrop-filter:blur(14px);border-bottom:1px solid var(--b);height:50px;display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem}
@@ -224,6 +253,59 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--t);m
   <div class="mcards" id="mgrid"></div>
 </div>
 
+<!-- PIN OVERLAY -->
+<div class="ovl" id="ovl-pin">
+  <div class="pin-modal">
+    <div class="pin-title" id="pin-title">輸入密碼</div>
+    <div class="pin-sub" id="pin-sub">請輸入你的 4 位數密碼</div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-err" id="pin-err"></div>
+    <div class="numpad">
+      <button class="npbtn" onclick="pinKey('1')">1</button>
+      <button class="npbtn" onclick="pinKey('2')">2</button>
+      <button class="npbtn" onclick="pinKey('3')">3</button>
+      <button class="npbtn" onclick="pinKey('4')">4</button>
+      <button class="npbtn" onclick="pinKey('5')">5</button>
+      <button class="npbtn" onclick="pinKey('6')">6</button>
+      <button class="npbtn" onclick="pinKey('7')">7</button>
+      <button class="npbtn" onclick="pinKey('8')">8</button>
+      <button class="npbtn" onclick="pinKey('9')">9</button>
+      <button class="npbtn" onclick="pinKey('cancel')" style="font-size:12px;color:var(--t2)">取消</button>
+      <button class="npbtn" onclick="pinKey('0')">0</button>
+      <button class="npbtn del" onclick="pinKey('del')">⌫</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW MEMBER SETUP MODAL -->
+<div class="ovl" id="ovl-newmember">
+  <div class="modal">
+    <div class="mtitle">新增成員</div>
+    <div class="msub">設定姓名與個人密碼</div>
+    <div class="setup-field">
+      <label class="setup-label">姓名（最多 8 字）</label>
+      <input class="setup-input" id="nm-name" placeholder="輸入你的名字" maxlength="8">
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">設定 4 位數密碼</label>
+      <input class="setup-input" id="nm-pin" placeholder="●●●●" maxlength="4" type="password" inputmode="numeric">
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">確認密碼</label>
+      <input class="setup-input" id="nm-pin2" placeholder="●●●●" maxlength="4" type="password" inputmode="numeric">
+    </div>
+    <div class="macts">
+      <button class="mcancel" onclick="closeAll()">取消</button>
+      <button class="mconfirm" onclick="confirmNewMember()">建立帳號</button>
+    </div>
+  </div>
+</div>
+
 <!-- APP -->
 <div id="pg-app" class="page">
   <div class="topbar">
@@ -365,6 +447,7 @@ const COLORS=[
 // ── STATE ───────────────────────────────
 let me=null,wkOff=0,lbMk=null,fsdb=null;
 let D={members:[],checkins:{},leaves:{}};
+let pinBuf='',pinTarget=null,pinMode=null; // 'login' or 'setup'
 
 // ── FIREBASE ────────────────────────────
 const configured = FB.apiKey !== "YOUR_API_KEY";
@@ -383,7 +466,9 @@ function initFB(){
     setSdot('live');
     if(snap.exists()){
       const d=snap.data();
-      D.members = d.members  || defaultMembers();
+      const incoming = d.members || defaultMembers();
+      // preserve structure, ensure pin field exists
+      D.members = incoming.map(m=>({pin:'',...m}));
       D.checkins= d.checkins || {};
       D.leaves  = d.leaves   || {};
     } else {
@@ -403,11 +488,11 @@ async function push(){
 
 // ── HELPERS ─────────────────────────────
 const defaultMembers=()=>[
-  {id:'u1',name:'舒章綸',recorder:true},
-  {id:'u2',name:'成員 A',recorder:false},
-  {id:'u3',name:'成員 B',recorder:false},
-  {id:'u4',name:'成員 C',recorder:false},
-  {id:'u5',name:'成員 D',recorder:false}
+  {id:'u1',name:'舒章綸',recorder:true,pin:''},
+  {id:'u2',name:'成員 A',recorder:false,pin:''},
+  {id:'u3',name:'成員 B',recorder:false,pin:''},
+  {id:'u4',name:'成員 C',recorder:false,pin:''},
+  {id:'u5',name:'成員 D',recorder:false,pin:''}
 ];
 const col=i=>COLORS[i%COLORS.length];
 const getM=id=>D.members.find(m=>m.id===id);
@@ -491,15 +576,32 @@ function toast(msg){
 
 // ── LOGIN ────────────────────────────────
 function renderLogin(){
-  document.getElementById('mgrid').innerHTML=D.members.map((m,i)=>{
+  const memberCards=D.members.map((m,i)=>{
     const c=col(i);
-    return `<div class="mcard" onclick="doLogin('${m.id}')" style="border-color:${c.c}33">
+    const hasPin=m.pin&&m.pin.length===4;
+    return `<div class="mcard" onclick="openPin('${m.id}')" style="border-color:${c.c}33">
       <div class="mcard-av" style="background:${c.bg};color:${c.c}">${m.name[0]}</div>
       <div class="mcard-name">${m.name}</div>
       <div class="mcard-role">${m.recorder?'★ 記錄員':'成員'}</div>
-      <div class="mcard-arr">→</div>
+      <div class="mcard-arr" style="font-size:12px;color:var(--t3)">${hasPin?'🔒':'🔓 未設密碼'}</div>
     </div>`;
   }).join('');
+  const addCard=`<div class="mcard-add" onclick="openNewMember()">
+    <div class="mcard-add-icon">＋</div>
+    <div class="mcard-add-lbl">新增成員</div>
+  </div>`;
+  document.getElementById('mgrid').innerHTML=memberCards+addCard;
+}
+function openPin(id){
+  const m=getM(id); if(!m) return;
+  pinTarget=id; pinBuf=''; pinMode='login';
+  updatePinDots();
+  document.getElementById('pin-err').textContent='';
+  const hasPin=m.pin&&m.pin.length===4;
+  document.getElementById('pin-title').textContent=hasPin?`${m.name} — 輸入密碼`:`${m.name} — 設定密碼`;
+  document.getElementById('pin-sub').textContent=hasPin?'請輸入你的 4 位數密碼':'尚未設定密碼，請先設定一組';
+  if(!hasPin){ pinMode='setpin'; }
+  document.getElementById('ovl-pin').classList.add('on');
 }
 function doLogin(id){
   if(!getM(id)) return;
@@ -723,8 +825,62 @@ function setSave(){
   push().then(()=>{ closeAll(); if(me) document.getElementById('tbnm').textContent=getM(me).name||''; renderApp(); renderLogin(); toast('設定已儲存'); });
 }
 
+// ── PIN LOGIC ─────────────────────────────
+function updatePinDots(){
+  for(let i=0;i<4;i++){
+    const d=document.getElementById('pd'+i);
+    d.classList.toggle('filled',i<pinBuf.length);
+    d.classList.remove('err');
+  }
+}
+function pinKey(k){
+  if(k==='cancel'){ closeAll(); pinBuf=''; return; }
+  if(k==='del'){ pinBuf=pinBuf.slice(0,-1); updatePinDots(); return; }
+  if(pinBuf.length>=4) return;
+  pinBuf+=k; updatePinDots();
+  if(pinBuf.length===4) setTimeout(checkPin,120);
+}
+function pinErr(msg){
+  document.getElementById('pin-err').textContent=msg;
+  for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.add('err');
+  setTimeout(()=>{ pinBuf=''; updatePinDots(); document.getElementById('pin-err').textContent=''; },800);
+}
+function checkPin(){
+  const m=getM(pinTarget); if(!m) return;
+  if(pinMode==='setpin'){
+    // First time setting PIN — save it and log in
+    m.pin=pinBuf;
+    push().then(()=>{ closeAll(); doLogin(pinTarget); toast('密碼設定完成 ✓'); });
+    return;
+  }
+  // Normal login
+  if(!m.pin||m.pin.length!==4){ doLogin(pinTarget); closeAll(); return; }
+  if(pinBuf===m.pin){ closeAll(); doLogin(pinTarget); }
+  else pinErr('密碼錯誤，請再試');
+}
+// ── NEW MEMBER ────────────────────────────
+function openNewMember(){
+  document.getElementById('nm-name').value='';
+  document.getElementById('nm-pin').value='';
+  document.getElementById('nm-pin2').value='';
+  document.getElementById('ovl-newmember').classList.add('on');
+  setTimeout(()=>document.getElementById('nm-name').focus(),100);
+}
+function confirmNewMember(){
+  const nm=(document.getElementById('nm-name').value||'').trim();
+  const p1=document.getElementById('nm-pin').value.trim();
+  const p2=document.getElementById('nm-pin2').value.trim();
+  if(!nm){ toast('請輸入姓名'); return; }
+  if(p1.length!==4||!/^\d{4}$/.test(p1)){ toast('密碼必須是 4 位數字'); return; }
+  if(p1!==p2){ toast('兩次密碼不一致'); return; }
+  if(D.members.length>=8){ toast('最多 8 位成員'); return; }
+  const newId='u'+Date.now();
+  D.members.push({id:newId,name:nm,recorder:false,pin:p1});
+  push().then(()=>{ closeAll(); renderLogin(); toast(`歡迎 ${nm}！帳號已建立`); });
+}
+
 // expose for inline onclick
-Object.assign(window,{doLogin,doLogout,showTab,chWk,closeAll,openCk,togCk,confirmCk,doLeave,clearToday,openSet,setDel,setAdd,setSave,tapDay});
+Object.assign(window,{doLogin,doLogout,showTab,chWk,closeAll,openCk,togCk,confirmCk,doLeave,clearToday,openSet,setDel,setAdd,setSave,tapDay,openPin,pinKey,openNewMember,confirmNewMember});
 
 initFB();
 </script>
