@@ -362,7 +362,8 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--t);m
         <div class="dgrid" id="mydays"></div>
         <div class="arow">
           <button class="abtn ap" id="btnck" onclick="openCk()">＋ 打卡</button>
-          <button class="abtn ab" id="btnlv" onclick="doLeave()">📋 本週請假</button>
+          <button class="abtn ab" id="btnlv-p" onclick="doLeave('personal')">📋 事假</button>
+          <button class="abtn ab" id="btnlv-s" onclick="doLeave('sick')">🤒 病假</button>
           <button class="abtn ad" id="btnclr" style="display:none" onclick="clearToday()">✕ 清除今日</button>
         </div>
       </div>
@@ -533,14 +534,21 @@ function allWeeks(){
 function allMonths(){ return [...new Set(allWeeks().map(mkey))].sort(); }
 
 // ── LEAVE ───────────────────────────────
-const isLv=(uid,mon)=>D.leaves[uid]?.[mkey(mon)]===wkKey(mon);
-const canLv=(uid,mon)=>!D.leaves[uid]?.[mkey(mon)];
-function toggleLv(uid,mon){
+// leaves[uid][wkKey] = 'personal' | 'sick'
+// Personal: 1 per calendar month; Sick: unlimited
+function getLvType(uid,mon){ return D.leaves[uid]?.[wkKey(mon)]||null; }
+const isLv=(uid,mon)=>!!getLvType(uid,mon);
+function hasPersonalThisMo(uid,mon){
   const mk=mkey(mon);
+  return Object.entries(D.leaves[uid]||{}).some(([wk,type])=>type==='personal'&&wk.startsWith(mk)&&wk!==wkKey(mon));
+}
+function toggleLv(uid,mon,type){
   if(!D.leaves[uid]) D.leaves[uid]={};
-  if(isLv(uid,mon)){ delete D.leaves[uid][mk]; return true; }
-  if(!canLv(uid,mon)){ toast('這個月已經請過假了！'); return false; }
-  D.leaves[uid][mk]=wkKey(mon); return true;
+  const wk=wkKey(mon), cur=getLvType(uid,mon);
+  if(cur===type){ delete D.leaves[uid][wk]; return true; } // cancel
+  if(cur){ delete D.leaves[uid][wk]; } // switch type
+  if(type==='personal'&&hasPersonalThisMo(uid,mon)){ toast('這個月事假已用完（每月 1 次）'); return false; }
+  D.leaves[uid][wk]=type; return true;
 }
 
 // ── CHECKIN ─────────────────────────────
@@ -555,12 +563,18 @@ const cntCk=(uid,days)=>days.filter(d=>getSt(uid,fmt(d))==='checked').length;
 function pen(uid,mon,days){
   const t=new Date(); t.setHours(0,0,0,0);
   const ended=t>days[6],onLv=isLv(uid,mon);
-  if(onLv) return {onLv,ck:cntCk(uid,days),miss:0,amt:0,ended};
+  const isTrial=wkNum(mon)===0; // week 0 = trial, no penalty
+  if(onLv) return {onLv,ck:cntCk(uid,days),miss:0,amt:0,ended,isTrial};
   const ck=cntCk(uid,days);
-  if(ended){ const ms=Math.max(0,NEED-ck); return {onLv,ck,miss:ms,amt:Math.min(ms*PAY,MAX_PAY),ended}; }
+  if(isTrial){
+    // Trial week: show checkins but no penalty
+    const rem=days.filter(d=>d>=t).length;
+    return {onLv,ck,miss:0,minMiss:0,rem,amt:0,minAmt:0,ended,isTrial};
+  }
+  if(ended){ const ms=Math.max(0,NEED-ck); return {onLv,ck,miss:ms,amt:Math.min(ms*PAY,MAX_PAY),ended,isTrial}; }
   const rem=days.filter(d=>d>=t).length;
   const minM=Math.max(0,NEED-(ck+rem)),curM=Math.max(0,NEED-ck);
-  return {onLv,ck,miss:curM,minMiss:minM,rem,amt:Math.min(curM*PAY,MAX_PAY),minAmt:Math.min(minM*PAY,MAX_PAY),ended:false};
+  return {onLv,ck,miss:curM,minMiss:minM,rem,amt:Math.min(curM*PAY,MAX_PAY),minAmt:Math.min(minM*PAY,MAX_PAY),ended:false,isTrial};
 }
 
 // ── UI HELPERS ──────────────────────────
@@ -594,7 +608,7 @@ function renderLogin(){
     return `<div class="mcard" onclick="openPin('${m.id}')" style="border-color:${c.c}33">
       <div class="mcard-av" style="background:${c.bg};color:${c.c}">${m.name[0]}</div>
       <div class="mcard-name">${m.name}</div>
-      <div class="mcard-role">${m.recorder?'★ 記錄員':'成員'}</div>
+      <div class="mcard-role">成員</div>
       <div class="mcard-arr" style="font-size:12px;color:var(--t3)">${hasPin?'🔒':''}</div>
     </div>`;
   }).join('');
@@ -640,7 +654,7 @@ function renderApp(){
 
   document.getElementById('mysec').textContent=`我的打卡 — ${m.name}`;
   document.getElementById('mynm').textContent=m.name;
-  document.getElementById('myrole').textContent=m.recorder?'★ 記錄員':'';
+  document.getElementById('myrole').textContent='';
   const av=document.getElementById('myav');
   av.textContent=m.name[0]; av.style.background=c.bg; av.style.color=c.c;
 
@@ -658,17 +672,33 @@ function renderApp(){
   renderDays(days,t,editable,mon);
 
   document.getElementById('btnck').disabled=!editable;
-  document.getElementById('btnlv').disabled=!editable;
+  document.getElementById('btnlv-p').disabled=!editable;
+  document.getElementById('btnlv-s').disabled=!editable;
   document.getElementById('btnck').style.opacity=editable?'1':'.4';
-  document.getElementById('btnlv').style.opacity=editable?'1':'.4';
-  const lv=document.getElementById('btnlv');
-  if(isLv(me,mon)){ lv.textContent='✓ 已請假'; lv.className='abtn ab'; }
-  else{ lv.textContent='📋 本週請假'; lv.className='abtn'; }
+  document.getElementById('btnlv-p').style.opacity=editable?'1':'.4';
+  document.getElementById('btnlv-s').style.opacity=editable?'1':'.4';
+  const lvType=getLvType(me,mon);
+  const btnP=document.getElementById('btnlv-p'), btnS=document.getElementById('btnlv-s');
+  btnP.textContent=lvType==='personal'?'✓ 事假中':'📋 事假';
+  btnP.className=lvType==='personal'?'abtn ab':'abtn';
+  btnS.textContent=lvType==='sick'?'✓ 病假中':'🤒 病假';
+  btnS.className=lvType==='sick'?'abtn ab':'abtn';
   document.getElementById('btnclr').style.display=(getSt(me,fmt(t))==='checked'&&isCur)?'flex':'none';
   renderMembers(days,mon,t);
 }
 
 function renderBanner(p){
+  if(p.isTrial&&!p.onLv){
+    const bn=document.getElementById('banner');
+    bn.className='banner on lv';
+    document.getElementById('bntag').className='bntag b';
+    document.getElementById('bntag').textContent='🧪 試用週';
+    document.getElementById('bndesc').textContent=`已打卡 ${p.ck} 次，試用週不計罰款`;
+    document.getElementById('bnnote').textContent='從 5/4 第 1 週開始正式計算';
+    document.getElementById('bnamt').className='bnamt b';
+    document.getElementById('bnamt').textContent='NT$0';
+    return;
+  }
   const bn=document.getElementById('banner');
   const set=(cls,tc,tt,dt,nt,ac,at)=>{
     bn.className=`banner on ${cls}`;
@@ -679,8 +709,22 @@ function renderBanner(p){
     document.getElementById('bnamt').className=`bnamt ${ac}`;
     document.getElementById('bnamt').textContent=at;
   };
-  if(p.onLv){ set('lv','b','📋 本週請假中','本週免罰款，本月請假額度已使用','','b','NT$0'); return; }
-  if(p.ck>=3){ set('ok','g','✓ 本週達標',`已完成${p.ck}次，本週免罰款！`,'','g','NT$0'); return; }
+  if(p.onLv){
+    const lvType=getLvType(me,getMon(wkOff));
+    const lvLabel=lvType==='sick'?'🤒 病假中':'📋 事假中';
+    const lvNote=lvType==='sick'?'病假無次數限制':'事假每月限 1 次，本月已使用';
+    set('lv','b',lvLabel,`本週免罰款，${lvNote}`,'','b','NT$0'); return;
+  }
+  if(p.ck>=3){
+    const funMsg=['','','','',
+      '已完成4次，居然超標了！',
+      '已完成5次，真是太認真！',
+      '已完成6次，要記得休息欸！',
+      '已完成7次，這遊戲應該不是給你玩的！'
+    ];
+    const msg=p.ck>=7?funMsg[7]:p.ck>=4?funMsg[p.ck]:'已完成'+p.ck+'次，本週免罰款！';
+    set('ok','g','✓ 本週達標',msg,'','g','NT$0'); return;
+  }
   if(p.ended){ set('warn','r','⚠ 未達標',`完成${p.ck}次，缺${p.miss}次`,p.miss===3?'最高罰款 NT$600':'','r',`NT$${p.amt}`); return; }
   const need=Math.max(0,NEED-p.ck);
   if(need===0) set('ok','g','✓ 已達標','繼續保持！','','g','NT$0');
@@ -719,7 +763,7 @@ function renderMembers(days,mon,t){
       <div class="mchdr"><div class="mcl">
         <div class="av" style="width:32px;height:32px;font-size:12px;background:${c.bg};color:${c.c}">${m.name[0]}</div>
         <div><div class="mcname">${m.name}${isMe?' <span style="font-size:10px;color:var(--t3)">(我)</span>':''}</div>
-        <div class="mcrole">${m.recorder?'★ 記錄員':''}</div></div></div>
+        <div class="mcrole"></div></div></div>
         <div class="mcpills">${pills}</div></div>
       <div class="prog"><div class="progf" style="width:${pct}%;background:${bc}"></div></div>
       <div class="mini">${mini}</div></div>`;
@@ -798,10 +842,19 @@ function confirmCk(){
   });
   push().then(()=>{ closeAll(); renderApp(); toast('已儲存 ✓'); });
 }
-function doLeave(){
+function doLeave(type){
   if(document.getElementById('btnlv').disabled) return;
-  const mon=getMon(wkOff),was=isLv(me,mon);
-  if(toggleLv(me,mon)) push().then(()=>{ renderApp(); toast(was?'已取消請假':'📋 本週請假，免罰款'); });
+  const mon=getMon(wkOff), cur=getLvType(me,mon);
+  // If clicking same type = cancel; else set new type
+  const was=(cur===type);
+  if(toggleLv(me,mon,type)){
+    push().then(()=>{
+      renderApp();
+      if(was) toast('已取消請假');
+      else if(type==='personal') toast('📋 事假請假，免罰款（本月已用1次）');
+      else toast('🤒 病假請假，免罰款');
+    });
+  }
 }
 function clearToday(){ const t=new Date(); t.setHours(0,0,0,0); setSt(me,fmt(t),null); push().then(()=>{ renderApp(); toast('已清除今日'); }); }
 function chWk(d){ const n=wkOff+d; if(n>0||getMon(n)<WEEK1) return; wkOff=n; renderApp(); }
@@ -899,7 +952,7 @@ function removePin(){
 }
 
 // expose for inline onclick
-Object.assign(window,{doLogin,doLogout,showTab,chWk,closeAll,openCk,togCk,confirmCk,doLeave,clearToday,openSet,setDel,setAdd,setSave,tapDay,openPin,pinKey,openNewMember,confirmNewMember,removePin});
+Object.assign(window,{doLogin,doLogout,showTab,chWk,closeAll,openCk,togCk,confirmCk,doLeave,clearToday,openSet,setDel,setAdd,setSave,tapDay,openPin,pinKey,openNewMember,confirmNewMember,removePin,getLvType});
 
 initFB();
 </script>
