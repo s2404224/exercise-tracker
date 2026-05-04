@@ -454,7 +454,11 @@ const COLORS=[
   {c:'#e8ff57',bg:'rgba(232,255,87,.13)'},{c:'#52b8ff',bg:'rgba(82,184,255,.13)'},
   {c:'#ff5252',bg:'rgba(255,82,82,.13)'},{c:'#3dffad',bg:'rgba(61,255,173,.13)'},
   {c:'#ffaa3d',bg:'rgba(255,170,61,.13)'},{c:'#c97bff',bg:'rgba(201,123,255,.13)'},
-  {c:'#ff7eb3',bg:'rgba(255,126,179,.13)'},{c:'#7bfff4',bg:'rgba(123,255,244,.13)'}
+  {c:'#ff7eb3',bg:'rgba(255,126,179,.13)'},{c:'#7bfff4',bg:'rgba(123,255,244,.13)'},
+  {c:'#a8ff78',bg:'rgba(168,255,120,.13)'},{c:'#f9a825',bg:'rgba(249,168,37,.13)'},
+  {c:'#e040fb',bg:'rgba(224,64,251,.13)'},{c:'#00e5ff',bg:'rgba(0,229,255,.13)'},
+  {c:'#ff6e40',bg:'rgba(255,110,64,.13)'},{c:'#69f0ae',bg:'rgba(105,240,174,.13)'},
+  {c:'#536dfe',bg:'rgba(83,109,254,.13)'}
 ];
 
 // ── STATE ───────────────────────────────
@@ -937,7 +941,7 @@ function confirmNewMember(){
     if(!/^\d{4}$/.test(p1)){ toast('密碼必須是 4 位數字'); return; }
     if(p1!==p2){ toast('兩次密碼不一致'); return; }
   }
-  if(D.members.length>=8){ toast('最多 8 位成員'); return; }
+  if(D.members.length>=15){ toast('最多 15 位成員'); return; }
   const newId='u'+Date.now();
   D.members.push({id:newId,name:nm,recorder:false,pin:p1||''});
   push().then(()=>{ closeAll(); renderLogin(); toast(`歡迎 ${nm}！帳號已建立`); });
