@@ -282,6 +282,35 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--t);m
   </div>
 </div>
 
+<!-- SYSTEM PASSWORD MODAL -->
+<div class="ovl" id="ovl-syspwd">
+  <div class="pin-modal">
+    <div class="pin-title" id="syspwd-title">系統驗證</div>
+    <div class="pin-sub" id="syspwd-sub">請輸入系統密碼</div>
+    <div class="pin-dots" id="syspwd-dots">
+      <div class="pin-dot" id="sp0"></div>
+      <div class="pin-dot" id="sp1"></div>
+      <div class="pin-dot" id="sp2"></div>
+      <div class="pin-dot" id="sp3"></div>
+    </div>
+    <div class="pin-err" id="syspwd-err"></div>
+    <div class="numpad">
+      <button class="npbtn" onclick="spKey('1')">1</button>
+      <button class="npbtn" onclick="spKey('2')">2</button>
+      <button class="npbtn" onclick="spKey('3')">3</button>
+      <button class="npbtn" onclick="spKey('4')">4</button>
+      <button class="npbtn" onclick="spKey('5')">5</button>
+      <button class="npbtn" onclick="spKey('6')">6</button>
+      <button class="npbtn" onclick="spKey('7')">7</button>
+      <button class="npbtn" onclick="spKey('8')">8</button>
+      <button class="npbtn" onclick="spKey('9')">9</button>
+      <button class="npbtn" onclick="spKey('cancel')" style="font-size:12px;color:var(--t2)">取消</button>
+      <button class="npbtn" onclick="spKey('0')">0</button>
+      <button class="npbtn del" onclick="spKey('del')">⌫</button>
+    </div>
+  </div>
+</div>
+
 <!-- NEW MEMBER SETUP MODAL -->
 <div class="ovl" id="ovl-newmember">
   <div class="modal">
@@ -450,6 +479,7 @@ const WEEK1=new Date(2026,3,27); WEEK1.setHours(0,0,0,0);
 const PAY=200,MAX_PAY=600,NEED=3;
 const DAYS=['一','二','三','四','五','六','日'];
 const MEDALS=['🥇','🥈','🥉'];
+const SYS_PWD='9715'; // 系統密碼
 const COLORS=[
   {c:'#e8ff57',bg:'rgba(232,255,87,.13)'},{c:'#52b8ff',bg:'rgba(82,184,255,.13)'},
   {c:'#ff5252',bg:'rgba(255,82,82,.13)'},{c:'#3dffad',bg:'rgba(61,255,173,.13)'},
@@ -465,6 +495,7 @@ const COLORS=[
 let me=null,wkOff=0,lbMk=null,fsdb=null;
 let D={members:[],checkins:{},leaves:{}};
 let pinBuf='',pinTarget=null,pinMode=null; // 'login' or 'setup'
+let spBuf='',spAction=null,loginManageMode=false;
 
 // ── FIREBASE ────────────────────────────
 const configured = FB.apiKey !== "YOUR_API_KEY";
@@ -607,20 +638,28 @@ function toast(msg){
 // ── LOGIN ────────────────────────────────
 function renderLogin(){
   const memberCards=D.members.map((m,i)=>{
-    const c=col(i);
+    const c2=col(i);
     const hasPin=m.pin&&m.pin.length===4;
-    return `<div class="mcard" onclick="openPin('${m.id}')" style="border-color:${c.c}33">
-      <div class="mcard-av" style="background:${c.bg};color:${c.c}">${m.name[0]}</div>
+    return `<div class="mcard" onclick="openPin('${m.id}')" style="border-color:${c2.c}33;position:relative">
+      <div class="mcard-av" style="background:${c2.bg};color:${c2.c}">${m.name[0]}</div>
       <div class="mcard-name">${m.name}</div>
       <div class="mcard-role">成員</div>
       <div class="mcard-arr" style="font-size:12px;color:var(--t3)">${hasPin?'🔒':''}</div>
+      ${loginManageMode?`<button onclick="event.stopPropagation();confirmDeleteMember('${m.id}')" style="position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;background:rgba(255,82,82,.15);border:1px solid rgba(255,82,82,.3);color:var(--red);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">✕</button>`:''}
     </div>`;
   }).join('');
-  const addCard=`<div class="mcard-add" onclick="openNewMember()">
+  const addCard=`<div class="mcard-add" onclick="reqSysPwd('addmember')">
     <div class="mcard-add-icon">＋</div>
     <div class="mcard-add-lbl">新增成員</div>
   </div>`;
+  const manageBtn=loginManageMode
+    ?`<div style="width:100%;max-width:480px;margin-top:10px;text-align:center"><button onclick="loginManageMode=false;renderLogin()" style="background:transparent;border:none;color:var(--t3);font-size:12px;cursor:pointer;font-family:inherit">完成管理</button></div>`
+    :`<div style="width:100%;max-width:480px;margin-top:10px;text-align:center"><button onclick="reqSysPwd('manage')" style="background:transparent;border:none;color:var(--t3);font-size:12px;cursor:pointer;font-family:inherit">管理成員</button></div>`;
   document.getElementById('mgrid').innerHTML=memberCards+addCard;
+  // Append manage button below grid
+  let mb=document.getElementById('login-manage-btn');
+  if(!mb){ mb=document.createElement('div'); mb.id='login-manage-btn'; document.getElementById('pg-login').appendChild(mb); }
+  mb.innerHTML=manageBtn;
 }
 function openPin(id){
   const m=getM(id); if(!m) return;
@@ -932,6 +971,65 @@ function openNewMember(){
   document.getElementById('ovl-newmember').classList.add('on');
   setTimeout(()=>document.getElementById('nm-name').focus(),100);
 }
+function reqSysPwd(action){
+  spBuf=''; spAction=action;
+  updateSpDots();
+  document.getElementById('syspwd-err').textContent='';
+  document.getElementById('syspwd-title').textContent=action==='addmember'?'新增成員驗證':action==='manage'?'管理成員驗證':'刪除成員驗證';
+  document.getElementById('syspwd-sub').textContent='請輸入系統密碼（4 位數）';
+  document.getElementById('ovl-syspwd').classList.add('on');
+}
+function updateSpDots(){
+  for(let i=0;i<4;i++){
+    const d=document.getElementById('sp'+i);
+    d.classList.toggle('filled',i<spBuf.length);
+    d.classList.remove('err');
+  }
+}
+function spKey(k){
+  if(k==='cancel'){ closeAll(); spBuf=''; return; }
+  if(k==='del'){ spBuf=spBuf.slice(0,-1); updateSpDots(); return; }
+  if(spBuf.length>=4) return;
+  spBuf+=k; updateSpDots();
+  if(spBuf.length===4) setTimeout(checkSysPwd,120);
+}
+function checkSysPwd(){
+  if(spBuf!==SYS_PWD){
+    document.getElementById('syspwd-err').textContent='密碼錯誤，請再試';
+    for(let i=0;i<4;i++) document.getElementById('sp'+i).classList.add('err');
+    setTimeout(()=>{ spBuf=''; updateSpDots(); document.getElementById('syspwd-err').textContent=''; },800);
+    return;
+  }
+  // Correct!
+  closeAll(); spBuf='';
+  if(spAction==='addmember') openNewMember();
+  else if(spAction==='manage'){ loginManageMode=true; renderLogin(); }
+  else if(spAction.startsWith('delete:')){ 
+    const uid=spAction.split(':')[1];
+    deleteMemberData(uid);
+  }
+}
+function confirmDeleteMember(uid){
+  const m=getM(uid); if(!m) return;
+  reqSysPwd('delete:'+uid);
+  document.getElementById('syspwd-title').textContent=`刪除 ${m.name}`;
+  document.getElementById('syspwd-sub').textContent='輸入系統密碼以刪除成員及所有資料';
+}
+function deleteMemberData(uid){
+  const m=getM(uid); if(!m) return;
+  const name=m.name;
+  // Remove member
+  D.members=D.members.filter(x=>x.id!==uid);
+  // Remove all checkin data
+  delete D.checkins[uid];
+  // Remove all leave data
+  delete D.leaves[uid];
+  push().then(()=>{
+    loginManageMode=false;
+    renderLogin();
+    toast(`已刪除 ${name} 的所有資料`);
+  });
+}
 function confirmNewMember(){
   const nm=(document.getElementById('nm-name').value||'').trim();
   const p1=(document.getElementById('nm-pin').value||'').trim();
@@ -956,7 +1054,7 @@ function removePin(){
 }
 
 // expose for inline onclick
-Object.assign(window,{doLogin,doLogout,showTab,chWk,closeAll,openCk,togCk,confirmCk,doLeave,clearToday,openSet,setDel,setAdd,setSave,tapDay,openPin,pinKey,openNewMember,confirmNewMember,removePin,getLvType});
+Object.assign(window,{doLogin,doLogout,showTab,chWk,closeAll,openCk,togCk,confirmCk,doLeave,clearToday,openSet,setDel,setAdd,setSave,tapDay,openPin,pinKey,openNewMember,confirmNewMember,removePin,getLvType,reqSysPwd,spKey,confirmDeleteMember});
 
 initFB();
 </script>
