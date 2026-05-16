@@ -237,11 +237,19 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--t);m
 .toast.on{transform:translateX(-50%) translateY(0)}
 .av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
 
+.mob-tabs{display:none;position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(12,12,12,.97);backdrop-filter:blur(14px);border-top:1px solid var(--b);height:56px;align-items:stretch}
+.mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:transparent;border:none;color:var(--t2);font-size:10px;cursor:pointer;font-family:inherit;transition:color .15s}
+.mob-tab.on{color:var(--acc)}
+.mob-tab-icon{font-size:20px;line-height:1}
+
 @media(max-width:600px){
   .mcards{grid-template-columns:repeat(2,1fr)}
   .stat4{grid-template-columns:repeat(2,1fr)}
   .dc{padding:5px 2px}.dcday{font-size:8px}.dcdate{font-size:10px}.dcico{font-size:11px}
   .cval{font-size:17px}.tb-tabs{display:none}.ltitle{font-size:26px}
+  .mob-tabs{display:flex}
+  .wrap{padding-bottom:5rem}
+  .lbwrap{padding-bottom:5rem}
 }
 </style>
 </head>
@@ -463,6 +471,15 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--t);m
 
 <div class="toast" id="toast"></div>
 
+<div class="mob-tabs" id="mob-tabs">
+  <button class="mob-tab on" id="mob-tbbck" onclick="showTab('ck')">
+    <div class="mob-tab-icon">📅</div><div>打卡</div>
+  </button>
+  <button class="mob-tab" id="mob-tbblb" onclick="showTab('lb')">
+    <div class="mob-tab-icon">🏆</div><div>排行榜</div>
+  </button>
+</div>
+
 <script type="module">
 // ════════════════════════════════════════
 // 🔧 填入你的 Firebase 設定
@@ -633,6 +650,8 @@ function showTab(id){
   document.getElementById('tab-'+id).classList.add('on');
   document.querySelectorAll('.tbtab').forEach(b=>b.classList.remove('on'));
   document.getElementById('tbb'+id).classList.add('on');
+  document.querySelectorAll('.mob-tab').forEach(b=>b.classList.remove('on'));
+  const mob=document.getElementById('mob-tbb'+id);if(mob)mob.classList.add('on');
   if(id==='lb') renderLb();
 }
 function closeAll(){ document.querySelectorAll('.ovl').forEach(o=>o.classList.remove('on')); }
