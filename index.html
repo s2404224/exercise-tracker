@@ -886,7 +886,8 @@ function confirmCk(){
   push().then(()=>{ closeAll(); renderApp(); toast('已儲存 ✓'); });
 }
 function doLeave(type){
-  if(document.getElementById('btnlv').disabled) return;
+  const btnId=type==='personal'?'btnlv-p':'btnlv-s';
+  if(document.getElementById(btnId).disabled) return;
   const mon=getMon(wkOff), cur=getLvType(me,mon);
   // If clicking same type = cancel; else set new type
   const was=(cur===type);
