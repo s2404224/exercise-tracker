@@ -883,8 +883,8 @@ function renderLb(){
     `<div class="scard"><div class="sclbl">總打卡</div><div class="scval cg">${totCk}</div></div>`
     +`<div class="scard"><div class="sclbl">總罰款</div><div class="scval cr">NT$${totAmt}</div></div>`
     +(!isAll
-      ?`<div class="scard"><div class="sclbl">已繳清</div><div class="scval cg">NT$${paidAmt}</div></div>`
-       +`<div class="scard"><div class="sclbl">待收款</div><div class="scval ${totAmt-paidAmt>0?'cr':'cg'}">NT$${totAmt-paidAmt}</div></div>`
+      ?`<div class="scard"><div class="sclbl">已繳清金額</div><div class="scval cg">NT$${paidAmt}</div></div>`
+       +`<div class="scard"><div class="sclbl">參與人數</div><div class="scval ca">${D.members.length}</div></div>`
       :`<div class="scard"><div class="sclbl">請假次數</div><div class="scval co">${totLv}</div></div>`
        +`<div class="scard"><div class="sclbl">參與人數</div><div class="scval ca">${D.members.length}</div></div>`);
 
@@ -904,7 +904,7 @@ function renderLb(){
       ?'<span class="rbadge" style="background:rgba(61,255,173,.15);color:var(--grn)">💰 已繳</span>'
       :'<span class="rbadge" style="background:rgba(255,82,82,.15);color:var(--red)">💸 未繳</span>');
     const scoreColor=s.amt===0?'cg':(!isAll&&isPaid(s.m.id,lbMk)?'cg':'cr');
-    const scoreLabel=!isAll&&s.amt>0?(isPaid(s.m.id,lbMk)?'已繳清':'待繳款'):'累積罰款';
+    const scoreLabel=s.amt===0?'本月免罰':(!isAll?(isPaid(s.m.id,lbMk)?'✓ 已繳清':'⚠ 尚未繳款'):'累積罰款');
     return `<div class="rcard r${rank+1}" style="${rank===0?'border-color:rgba(255,215,0,.25)':''}">
       <div class="rnum">${medal}</div>
       <div class="av" style="width:40px;height:40px;font-size:16px;background:${c.bg};color:${c.c}">${s.m.name[0]}</div>
