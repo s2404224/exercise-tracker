@@ -608,7 +608,7 @@ function allWeeks(){
   while(m<=t){ ws.push(new Date(m)); m=new Date(m); m.setDate(m.getDate()+7); }
   return ws;
 }
-function allMonths(){ return [...new Set(allWeeks().map(mkey))].sort(); }
+function allMonths(){ return [...new Set(allWeeks().map(mkey))].sort().filter(mk=>mk!=='2026-04'); }
 
 // ── LEAVE ───────────────────────────────
 // leaves[uid][wkKey] = 'personal' | 'sick'
@@ -880,7 +880,7 @@ function renderMembers(days,mon,t){
 function renderLb(){
   const months=allMonths();
   if(!months.length){ document.getElementById('ranklist').innerHTML='<p style="color:var(--t3);font-size:13px;padding:1rem 0">尚無紀錄</p>'; return; }
-  if(!lbMk||!months.includes(lbMk)) lbMk=months[months.length-1];
+  if(!lbMk||(!months.includes(lbMk)&&lbMk!=='all')) lbMk=months[months.length-1];
   document.getElementById('mtabs').innerHTML=
     months.map(mk=>`<button class="mtab${mk===lbMk?' on':''}" onclick="setLbMk('${mk}')">${mlabel(mk)}</button>`).join('')
     +`<button class="mtab${lbMk==='all'?' on':''}" onclick="setLbMk('all')">全部累積</button>`;
