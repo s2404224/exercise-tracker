@@ -639,6 +639,8 @@ const cntCk=(uid,days)=>days.filter(d=>getSt(uid,fmt(d))==='checked').length;
 // ── PENALTY ─────────────────────────────
 function pen(uid,mon,days){
   const t=new Date(); t.setHours(0,0,0,0);
+  const m=getM(uid),joinWk=m?.joinWk||fmt(WEEK1);
+  if(wkKey(mon)<joinWk) return {notJoined:true,onLv:false,ck:0,miss:0,amt:0,ended:t>days[6],isTrial:false};
   const ended=t>days[6],onLv=isLv(uid,mon);
   const isTrial=wkNum(mon)===0; // week 0 = trial, no penalty
   if(onLv) return {onLv,ck:cntCk(uid,days),miss:0,amt:0,ended,isTrial};
@@ -758,12 +760,13 @@ function renderApp(){
   renderBanner(p);
   renderDays(days,t,editable,mon);
 
-  document.getElementById('btnck').disabled=!editable;
-  document.getElementById('btnlv-p').disabled=!editable;
-  document.getElementById('btnlv-s').disabled=!editable;
-  document.getElementById('btnck').style.opacity=editable?'1':'.4';
-  document.getElementById('btnlv-p').style.opacity=editable?'1':'.4';
-  document.getElementById('btnlv-s').style.opacity=editable?'1':'.4';
+  const actOk=editable&&!p.notJoined;
+  document.getElementById('btnck').disabled=!actOk;
+  document.getElementById('btnlv-p').disabled=!actOk;
+  document.getElementById('btnlv-s').disabled=!actOk;
+  document.getElementById('btnck').style.opacity=actOk?'1':'.4';
+  document.getElementById('btnlv-p').style.opacity=actOk?'1':'.4';
+  document.getElementById('btnlv-s').style.opacity=actOk?'1':'.4';
   const lvType=getLvType(me,mon);
   const btnP=document.getElementById('btnlv-p'), btnS=document.getElementById('btnlv-s');
   btnP.textContent=lvType==='personal'?'✓ 事假中':'📋 事假';
@@ -775,6 +778,17 @@ function renderApp(){
 }
 
 function renderBanner(p){
+  if(p.notJoined){
+    const bn=document.getElementById('banner');
+    bn.className='banner on lv';
+    document.getElementById('bntag').className='bntag b';
+    document.getElementById('bntag').textContent='📅 加入前';
+    document.getElementById('bndesc').textContent='這週尚未加入，不計罰款與打卡紀錄';
+    document.getElementById('bnnote').textContent='';
+    document.getElementById('bnamt').className='bnamt b';
+    document.getElementById('bnamt').textContent='';
+    return;
+  }
   if(p.isTrial&&!p.onLv){
     const bn=document.getElementById('banner');
     bn.className='banner on lv';
@@ -820,14 +834,18 @@ function renderBanner(p){
 }
 
 function renderDays(days,t,editable,mon){
+  const mm=getM(me),joinWk=mm?.joinWk||fmt(WEEK1),notJoined=wkKey(mon)<joinWk;
   document.getElementById('mydays').innerHTML=days.map((d,i)=>{
     const dk=fmt(d),isT=d.getTime()===t.getTime(),isFut=d>t;
     const st=getSt(me,dk),onLv=isLv(me,mon);
     let cls='dc';
-    if(onLv) cls+=' dclv'; else if(st==='checked') cls+=' dcok';
-    if(isFut) cls+=' dcf'; if(isT) cls+=' dctd'; if(!editable) cls+=' dcro';
-    const ico=onLv?'休':st==='checked'?'✓':'';
-    const oc=editable&&!isFut&&!onLv?`tapDay('${dk}')` :'';
+    if(notJoined){ cls+=' dcf dcro'; }
+    else if(onLv) cls+=' dclv'; else if(st==='checked') cls+=' dcok';
+    if(!notJoined&&isFut) cls+=' dcf';
+    if(isT) cls+=' dctd';
+    if(!editable&&!notJoined) cls+=' dcro';
+    const ico=notJoined?'—':onLv?'休':st==='checked'?'✓':'';
+    const oc=!notJoined&&editable&&!isFut&&!onLv?`tapDay('${dk}')` :'';
     return `<div class="${cls}" onclick="${oc}"><div class="dcday">${DAYS[i]}</div><div class="dcdate">${d.getDate()}</div>${ico?`<div class="dcico">${ico}</div>`:''}</div>`;
   }).join('');
 }
@@ -837,7 +855,8 @@ function renderMembers(days,mon,t){
     const c=col(i),isMe=m.id===me,p=pen(m.id,mon,days);
     const pct=p.onLv?100:Math.min(100,Math.round(p.ck/3*100));
     let pills='';
-    if(p.onLv) pills='<span class="pill pb">請假週</span>';
+    if(p.notJoined) pills='<span class="pill pg">尚未加入</span>';
+    else if(p.onLv) pills='<span class="pill pb">請假週</span>';
     else if(p.ck>=3) pills='<span class="pill pok">達標 ✓</span>';
     else pills=`<span class="pill pg">${p.ck}/3</span>`;
     if(p.amt>0) pills+=`<span class="pill pw">罰 $${p.amt}</span>`;
@@ -1149,8 +1168,9 @@ function confirmNewMember(){
   }
   if(D.members.length>=15){ toast('最多 15 位成員'); return; }
   const newId='u'+Date.now();
-  D.members.push({id:newId,name:nm,recorder:false,pin:p1||''});
-  push().then(()=>{ closeAll(); renderLogin(); toast(`歡迎 ${nm}！帳號已建立`); });
+  const joinWk=wkKey(getMon(0));
+  D.members.push({id:newId,name:nm,recorder:false,pin:p1||'',joinWk});
+  push().then(()=>{ closeAll(); renderLogin(); toast(`歡迎 ${nm}！從本週開始計算`); });
 }
 
 // ── REMOVE PIN ──────────────────────────
