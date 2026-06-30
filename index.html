@@ -425,6 +425,8 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--t);m
     <div class="lbwrap">
       <div class="lbtitle">🏆 排行榜</div>
       <div class="lbsub">綠點=達標・藍點=請假・紅點=缺席</div>
+      <div id="lbsummary"></div>
+      <div class="sec" style="margin-top:1.5rem">個人排行（7 月起）</div>
       <div class="mtabs" id="mtabs"></div>
       <div id="pay-action"></div>
       <div class="stat4" id="lbstats"></div>
@@ -623,7 +625,14 @@ const defaultMembers=()=>[
   {id:'u2',name:'成員 A',recorder:false,pin:''},
   {id:'u3',name:'成員 B',recorder:false,pin:''},
   {id:'u4',name:'成員 C',recorder:false,pin:''},
-  {id:'u5',name:'成員 D',recorder:false,pin:''}
+  {id:'u5',name:'成員 D',recorder:false,pin:''},
+  {id:'u6',name:'成員 E',recorder:false,pin:''},
+  {id:'u7',name:'成員 F',recorder:false,pin:''},
+  {id:'u8',name:'成員 G',recorder:false,pin:''},
+  {id:'u9',name:'成員 H',recorder:false,pin:''},
+  {id:'u10',name:'成員 I',recorder:false,pin:''},
+  {id:'u11',name:'成員 J',recorder:false,pin:''},
+  {id:'u12',name:'成員 K',recorder:false,pin:''}
 ];
 const col=i=>COLORS[i%COLORS.length];
 const getM=id=>D.members.find(m=>m.id===id);
@@ -650,6 +659,16 @@ function allWeeks(){
   return ws;
 }
 function allMonths(){ return [...new Set(allWeeks().map(mkey))].sort().filter(mk=>mk!=='2026-04'); }
+// 排行榜月份歸屬：6/29 那週(週一在 6 月)歸到 7 月個人排行；個人榜自 7 月起
+const LB_W1KEY=fmt(WEEK1);
+const lbMonthKey=mon=> wkKey(mon)===LB_W1KEY ? '2026-07' : mkey(mon);
+function lbMonths(){ return [...new Set(allWeeks().map(lbMonthKey))].sort().filter(mk=>mk>='2026-07'); }
+// 歷史彙整：App 開始記錄前的人工統計，僅總計、無個人資料
+const HISTORY=[
+  {label:'5月', ck:'154', fine:200, paid:200, people:11},
+  {label:'6月', ck:'100+', fine:400, paid:400, people:12}
+];
+const HIST_TOTAL_FINE=7000; // 目前累積罰款
 
 // ── LEAVE ───────────────────────────────
 // leaves[uid][wkKey] = 'personal' | 'sick'
@@ -902,9 +921,34 @@ function renderMembers(days,mon,t){
 }
 
 // ── LEADERBOARD ──────────────────────────
+function renderLbSummary(){
+  const el=document.getElementById('lbsummary'); if(!el) return;
+  const rows=HISTORY.map(h=>`
+    <div class="rcard" style="cursor:default">
+      <div class="rnum" style="font-size:15px;width:auto;min-width:38px;color:var(--t2)">${h.label}</div>
+      <div class="rinfo"><div class="rname">總打卡 ${h.ck} 次</div>
+      <div class="rdetail">罰款 NT$${h.fine}・已繳 NT$${h.paid}・${h.people} 人</div></div>
+      <div class="rright"><div class="rscore cg">NT$${h.paid}</div><div class="rscl">已繳清</div></div>
+    </div>`).join('');
+  el.innerHTML=`<div class="sec">歷史彙整（個人榜自 7 月起）</div>${rows}
+    <div class="rcard" style="cursor:default;border-color:rgba(255,82,82,.3);background:var(--red-d)">
+      <div class="rnum" style="font-size:18px;width:auto;min-width:38px">💰</div>
+      <div class="rinfo"><div class="rname">目前累積罰款</div>
+      <div class="rdetail">5 月起累計</div></div>
+      <div class="rright"><div class="rscore cr">NT$${HIST_TOTAL_FINE.toLocaleString()}</div><div class="rscl">累積罰款</div></div>
+    </div>`;
+}
+
 function renderLb(){
-  const months=allMonths();
-  if(!months.length){ document.getElementById('ranklist').innerHTML='<p style="color:var(--t3);font-size:13px;padding:1rem 0">尚無紀錄</p>'; return; }
+  renderLbSummary();
+  const months=lbMonths();
+  if(!months.length){
+    document.getElementById('mtabs').innerHTML='';
+    document.getElementById('pay-action').innerHTML='';
+    document.getElementById('lbstats').innerHTML='';
+    document.getElementById('ranklist').innerHTML='<p style="color:var(--t3);font-size:13px;padding:1rem 0">個人排行 7 月起開始累積</p>';
+    return;
+  }
   if(!lbMk||(!months.includes(lbMk)&&lbMk!=='all')) lbMk=months[months.length-1];
   document.getElementById('mtabs').innerHTML=
     months.map(mk=>`<button class="mtab${mk===lbMk?' on':''}" onclick="setLbMk('${mk}')">${mlabel(mk)}</button>`).join('')
@@ -916,7 +960,7 @@ function renderLb(){
     :'';
   const scores=D.members.map((m,i)=>{
     let ck=0,miss=0,lv=0,amt=0;
-    tgtM.forEach(mk=>wks.filter(w=>mkey(w)===mk).forEach(mon=>{ const days=wkDays(mon),p=pen(m.id,mon,days); if(p.onLv)lv++;else{ck+=p.ck;if(p.ended)miss+=p.miss;} amt+=p.amt; }));
+    tgtM.forEach(mk=>wks.filter(w=>lbMonthKey(w)===mk).forEach(mon=>{ const days=wkDays(mon),p=pen(m.id,mon,days); if(p.onLv)lv++;else{ck+=p.ck;if(p.ended)miss+=p.miss;} amt+=p.amt; }));
     return {m,i,ck,miss,lv,amt,score:ck*10-miss*15+lv*5};
   }).sort((a,b)=>b.score-a.score);
 
@@ -932,7 +976,7 @@ function renderLb(){
       :`<div class="scard"><div class="sclbl">請假次數</div><div class="scval co">${totLv}</div></div>`
        +`<div class="scard"><div class="sclbl">參與人數</div><div class="scval ca">${D.members.length}</div></div>`);
 
-  const wkList=isAll?wks:wks.filter(w=>mkey(w)===lbMk);
+  const wkList=isAll?wks:wks.filter(w=>lbMonthKey(w)===lbMk);
   document.getElementById('ranklist').innerHTML=scores.map((s,rank)=>{
     const c=col(s.i),medal=rank<3?MEDALS[rank]:(rank+1);
     const dots=wkList.slice(-8).map(mon=>{ const days=wkDays(mon),p=pen(s.m.id,mon,days);
