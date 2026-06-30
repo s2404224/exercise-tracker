@@ -470,8 +470,8 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--t);m
     <div style="margin-top:4px;margin-bottom:4px">
       <button onclick="removePin()" style="width:100%;padding:9px;background:transparent;border:1px solid rgba(255,82,82,.25);border-radius:6px;color:var(--red);font-size:12px;cursor:pointer;font-family:inherit;transition:background .15s" onmouseover="this.style.background='rgba(255,82,82,.08)'" onmouseout="this.style.background='transparent'">✕ 移除密碼，改回免密碼登入</button>
     </div>
-    <div style="margin-bottom:4px">
-      <button onclick="restoreFromBackup()" style="width:100%;padding:9px;background:transparent;border:1px solid rgba(82,184,255,.25);border-radius:6px;color:var(--blu);font-size:12px;cursor:pointer;font-family:inherit;transition:background .15s" onmouseover="this.style.background='rgba(82,184,255,.08)'" onmouseout="this.style.background='transparent'">🔄 從最近備份還原資料</button>
+    <div id="set-restore-wrap" style="margin-bottom:4px;display:none">
+      <button onclick="reqSysPwd('restore')" style="width:100%;padding:9px;background:transparent;border:1px solid rgba(82,184,255,.25);border-radius:6px;color:var(--blu);font-size:12px;cursor:pointer;font-family:inherit;transition:background .15s" onmouseover="this.style.background='rgba(82,184,255,.08)'" onmouseout="this.style.background='transparent'">🔄 從最近備份還原資料（管理員）</button>
     </div>
     <div class="macts" style="margin-top:10px">
       <button class="mcancel" onclick="closeAll()">取消</button>
@@ -543,6 +543,7 @@ let D={members:[],checkins:{},leaves:{},payments:{}};
 let pinBuf='',pinTarget=null,pinMode=null; // 'login' or 'setup'
 let spBuf='',spAction=null,loginManageMode=false;
 let firstLoadDone=false; // 防止 onSnapshot 誤判空文件而覆寫真實資料
+let dailyDoneFor=null;   // 記錄今天是否已做過每日備份
 
 // ── FIREBASE ────────────────────────────
 const configured = FB.apiKey !== "YOUR_API_KEY";
@@ -579,7 +580,33 @@ function initFB(){
     hideLoad();
     if(!me){ showPage('login'); renderLogin(); }
     else renderApp();
+    maybeDailyBackup(); // 每日自動備份（每天第一次開啟時觸發）
   }, err=>{ setSdot('err'); toast('連線錯誤，資料未變更'); console.error(err); });
+  // 跨午夜仍開著的裝置：每 30 分鐘檢查一次，日期換天就自動備份
+  setInterval(maybeDailyBackup, 30*60*1000);
+}
+
+// ── 每日自動備份 ──────────────────────────
+// 由於是純前端網頁，無法保證 00:00 準時執行；改為「每天第一個開啟 App 的人」
+// 自動把當天資料存到雲端 exercise/dailyBackups（保留最近 7 天），達到每日一份快照。
+async function maybeDailyBackup(){
+  const today=fmt(new Date());
+  if(dailyDoneFor===today) return;          // 今天已備份過，避免重複讀寫
+  if(!fsdb||!firstLoadDone) return;
+  if(isEmptyData(D.checkins,D.leaves)) return; // 空資料不備份，避免覆蓋
+  try{
+    const ref=doc(fsdb,'exercise','dailyBackups');
+    const snap=await getDoc(ref);
+    const days=(snap.exists()&&snap.data().days)||{};
+    if(!days[today]){
+      days[today]={members:D.members,checkins:D.checkins,leaves:D.leaves,payments:D.payments};
+      const keys=Object.keys(days).sort();
+      while(keys.length>7) delete days[keys.shift()]; // 只保留最近 7 天
+      await setDoc(ref,{days,ts:Date.now()});
+      console.log('每日備份完成',today);
+    }
+    dailyDoneFor=today;
+  }catch(e){ console.error('每日備份失敗',e); }
 }
 
 const isEmptyData=(checkins,leaves)=>
@@ -606,9 +633,23 @@ async function restoreFromBackup(){
   if(!fsdb) return;
   if(!confirm('確定要從最近一次備份還原資料嗎？這會覆蓋目前所有打卡與請假紀錄。')) return;
   try{
-    const snap=await getDoc(doc(fsdb,'exercise','backup'));
-    if(!snap.exists()){ toast('找不到備份資料'); return; }
-    const d=snap.data();
+    // 從「即時備份」與「每日備份（最近 7 天）」中挑出最新且非空的一份還原
+    let best=null;
+    const bk=await getDoc(doc(fsdb,'exercise','backup'));
+    if(bk.exists()&&!isEmptyData(bk.data().checkins,bk.data().leaves)) best={d:bk.data(),ts:bk.data().ts||0};
+    const db=await getDoc(doc(fsdb,'exercise','dailyBackups'));
+    if(db.exists()&&db.data().days){
+      const days=db.data().days;
+      Object.keys(days).forEach(k=>{
+        const dd=days[k];
+        if(!isEmptyData(dd.checkins,dd.leaves)){
+          const ts=new Date(k+'T23:59:59').getTime();
+          if(!best||ts>best.ts) best={d:dd,ts};
+        }
+      });
+    }
+    if(!best){ toast('找不到可用的備份'); return; }
+    const d=best.d;
     D.members  = d.members  || D.members;
     D.checkins = d.checkins || {};
     D.leaves   = d.leaves   || {};
@@ -737,9 +778,20 @@ function toast(msg){
 }
 
 // ── LOGIN ────────────────────────────────
+// 依目前排行成績（7 月起累積）為登入排序用
+function memberScore(uid){
+  const wks=allWeeks(),mons=lbMonths();
+  let ck=0,miss=0,lv=0;
+  mons.forEach(mk=>wks.filter(w=>lbMonthKey(w)===mk).forEach(mon=>{
+    const p=pen(uid,mon,wkDays(mon)); if(p.onLv)lv++; else{ck+=p.ck; if(p.ended)miss+=p.miss;}
+  }));
+  return ck*10-miss*15+lv*5;
+}
 function renderLogin(){
-  const memberCards=D.members.map((m,i)=>{
-    const c2=col(i);
+  // 登入卡片依當前排行成績由高到低排序；顏色維持綁定成員本身
+  const ordered=[...D.members].sort((a,b)=>memberScore(b.id)-memberScore(a.id));
+  const memberCards=ordered.map(m=>{
+    const c2=col(midx(m.id));
     const hasPin=m.pin&&m.pin.length===4;
     return `<div class="mcard" onclick="openPin('${m.id}')" style="border-color:${c2.c}33;position:relative">
       <div class="mcard-av" style="background:${c2.bg};color:${c2.c}">${m.name[0]}</div>
@@ -1048,11 +1100,14 @@ function clearToday(){ const t=new Date(); t.setHours(0,0,0,0); setSt(me,fmt(t),
 function chWk(d){ const n=wkOff+d; if(n>0||getMon(n)<WEEK1) return; wkOff=n; renderApp(); }
 
 // ── SETTINGS ─────────────────────────────
+const isAdmin=m=>!!(m&&(m.recorder===true||m.name==='舒章綸'));
 function openSet(){
   const m=getM(me); if(!m) return;
   document.getElementById('set-name').value=m.name;
   document.getElementById('set-pin1').value='';
   document.getElementById('set-pin2').value='';
+  // 還原備份僅限系統管理員（舒章綸）
+  document.getElementById('set-restore-wrap').style.display=isAdmin(m)?'block':'none';
   document.getElementById('ovlset').classList.add('on');
 }
 function setDel(id){ /* unused but kept */ }
@@ -1120,7 +1175,7 @@ function reqSysPwd(action){
   spBuf=''; spAction=action;
   updateSpDots();
   document.getElementById('syspwd-err').textContent='';
-  document.getElementById('syspwd-title').textContent=action==='addmember'?'新增成員驗證':action==='manage'?'管理成員驗證':'刪除成員驗證';
+  document.getElementById('syspwd-title').textContent=action==='addmember'?'新增成員驗證':action==='manage'?'管理成員驗證':action==='restore'?'還原備份驗證':'刪除成員驗證';
   document.getElementById('syspwd-sub').textContent='請輸入系統密碼（4 位數）';
   document.getElementById('ovl-syspwd').classList.add('on');
 }
@@ -1157,12 +1212,13 @@ function checkSysPwd(){
     const mk=spAction.split(':')[1];
     openPayment(mk);
   }
+  else if(spAction==='restore') restoreFromBackup();
 }
 
 // ── PAYMENTS ─────────────────────────────
 const isPaid=(uid,mk)=>!!(D.payments[mk]?.[uid]);
 function renderPayList(mk){
-  const wks=allWeeks().filter(w=>mkey(w)===mk);
+  const wks=allWeeks().filter(w=>lbMonthKey(w)===mk);
   let html='',hasAny=false;
   D.members.forEach((m,i)=>{
     let amt=0;
