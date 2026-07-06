@@ -1,0 +1,8 @@
+{
+  "name": "今天不練，明天掏錢",
+  "short_name": "運動打卡",
+  "theme_color": "#0c0c0c",
+  "background_color": "#0c0c0c",
+  "display": "standalone",
+  "icons": [{ "src": "icon.png", "sizes": "235x235", "type": "image/png" }]
+}
