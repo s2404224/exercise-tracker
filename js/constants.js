@@ -16,7 +16,7 @@ export const WEEK1=new Date(2026,5,29); WEEK1.setHours(0,0,0,0);
 export const PAY=10,MAX_PAY=10,NEED=1;
 export const DAYS=['一','二','三','四','五','六','日'];
 export const MEDALS=['🥇','🥈','🥉'];
-export const SYS_PWD='9715'; // 系統密碼
+export const SYS_PWD='0000'; // 系統密碼
 export const COLORS=[
   {c:'#e8ff57',bg:'rgba(232,255,87,.13)'},{c:'#52b8ff',bg:'rgba(82,184,255,.13)'},
   {c:'#ff5252',bg:'rgba(255,82,82,.13)'},{c:'#3dffad',bg:'rgba(61,255,173,.13)'},
