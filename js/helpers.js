@@ -3,7 +3,7 @@ import { WEEK1, PAY, MAX_PAY, NEED, COLORS } from './constants.js';
 
 // ── HELPERS ─────────────────────────────
 export const defaultMembers=()=>[
-  {id:'u1',name:'舒章綸',recorder:true,pin:''},
+  {id:'u1',name:'張語樵',recorder:true,pin:''},
   {id:'u2',name:'成員 A',recorder:false,pin:''},
   {id:'u3',name:'成員 B',recorder:false,pin:''},
   {id:'u4',name:'成員 C',recorder:false,pin:''},
