@@ -30,7 +30,5 @@ export const COLORS=[
 
 // 歷史彙整：App 開始記錄前的人工統計，僅總計、無個人資料
 export const HISTORY=[
-  {label:'5月', ck:'154', fine:200, paid:200, people:11},
-  {label:'6月', ck:'100+', fine:400, paid:400, people:12}
 ];
-export const HIST_TOTAL_FINE=7000; // 目前累積罰款
+export const HIST_TOTAL_FINE=0; // 目前累積罰款
