@@ -2,20 +2,7 @@ import { S } from './state.js';
 import { WEEK1, PAY, MAX_PAY, NEED, COLORS } from './constants.js';
 
 // ── HELPERS ─────────────────────────────
-export const defaultMembers=()=>[
-  {id:'u1',name:'張語樵',recorder:true,pin:''},
-  {id:'u2',name:'成員 A',recorder:false,pin:''},
-  {id:'u3',name:'成員 B',recorder:false,pin:''},
-  {id:'u4',name:'成員 C',recorder:false,pin:''},
-  {id:'u5',name:'成員 D',recorder:false,pin:''},
-  {id:'u6',name:'成員 E',recorder:false,pin:''},
-  {id:'u7',name:'成員 F',recorder:false,pin:''},
-  {id:'u8',name:'成員 G',recorder:false,pin:''},
-  {id:'u9',name:'成員 H',recorder:false,pin:''},
-  {id:'u10',name:'成員 I',recorder:false,pin:''},
-  {id:'u11',name:'成員 J',recorder:false,pin:''},
-  {id:'u12',name:'成員 K',recorder:false,pin:''}
-];
+export const defaultMembers=()=>[];
 export const col=i=>COLORS[i%COLORS.length];
 export const getM=id=>S.D.members.find(m=>m.id===id);
 export const midx=id=>S.D.members.findIndex(m=>m.id===id);

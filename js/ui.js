@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { DAYS, MEDALS, NEED, HISTORY, HIST_TOTAL_FINE, WEEK1 } from './constants.js';
+import { DAYS, MEDALS, NEED, MAX_PAY, HISTORY, HIST_TOTAL_FINE, WEEK1 } from './constants.js';
 import {
   col, getM, midx, fmt, fmtS, mlabel, getMon, wkNum, wkDays, wkKey,
   allWeeks, lbMonthKey, lbMonths, getLvType, isLv, getSt, pen, isPaid
@@ -109,8 +109,9 @@ export function renderApp(){
 
   const p=pen(S.me,mon,days);
   document.getElementById('myn').textContent=p.ck;
+  document.getElementById('myneed').textContent=NEED;
   const myEl=document.getElementById('cmy');
-  myEl.textContent=`${p.ck}/3`; myEl.className=`cval ${p.ck>=3||p.onLv?'cg':'ca'}`;
+  myEl.textContent=`${p.ck}/${NEED}`; myEl.className=`cval ${p.ck>=NEED||p.onLv?'cg':'ca'}`;
   const fEl=document.getElementById('cfine');
   fEl.textContent=`NT$${p.amt}`; fEl.className=`cval ${p.amt===0?'cg':'cr'}`;
   let tot=0; S.D.members.forEach(mm=>{ tot+=pen(mm.id,mon,days).amt; });
@@ -165,7 +166,7 @@ export function renderBanner(p){
     const lvNote=lvType==='sick'?'病假無次數限制':'事假每月限 1 次，本月已使用';
     set('lv','b',lvLabel,`本週免罰款，${lvNote}`,'','b','NT$0'); return;
   }
-  if(p.ck>=3){
+  if(p.ck>=NEED){
     const funMsg=['','','','',
       '已完成4次，居然超標了！',
       '已完成5次，真是太認真！',
@@ -175,7 +176,7 @@ export function renderBanner(p){
     const msg=p.ck>=7?funMsg[7]:p.ck>=4?funMsg[p.ck]:'已完成'+p.ck+'次，本週免罰款！';
     set('ok','g','✓ 本週達標',msg,'','g','NT$0'); return;
   }
-  if(p.ended){ set('warn','r','⚠ 未達標',`完成${p.ck}次，缺${p.miss}次`,p.miss===3?'最高罰款 NT$600':'','r',`NT$${p.amt}`); return; }
+  if(p.ended){ set('warn','r','⚠ 未達標',`完成${p.ck}次，缺${p.miss}次`,p.miss===NEED?`最高罰款 NT$${MAX_PAY}`:'','r',`NT$${p.amt}`); return; }
   const need=Math.max(0,NEED-p.ck);
   if(need===0) set('ok','g','✓ 已達標','繼續保持！','','g','NT$0');
   else if(p.minMiss>0) set('warn','r','⚠ 確定被罰',`剩餘天數不足，最少缺${p.minMiss}次`,`若完全不去：NT$${p.amt}`,'r',`NT$${p.minAmt}`);
@@ -202,18 +203,18 @@ export function renderDays(days,t,editable,mon){
 export function renderMembers(days,mon,t){
   document.getElementById('mlist').innerHTML=S.D.members.map((m,i)=>{
     const c=col(i),isMe=m.id===S.me,p=pen(m.id,mon,days);
-    const pct=p.onLv?100:Math.min(100,Math.round(p.ck/3*100));
+    const pct=p.onLv?100:Math.min(100,Math.round(p.ck/NEED*100));
     let pills='';
     if(p.notJoined) pills='<span class="pill pg">尚未加入</span>';
     else if(p.onLv) pills='<span class="pill pb">請假週</span>';
-    else if(p.ck>=3) pills='<span class="pill pok">達標 ✓</span>';
-    else pills=`<span class="pill pg">${p.ck}/3</span>`;
+    else if(p.ck>=NEED) pills='<span class="pill pok">達標 ✓</span>';
+    else pills=`<span class="pill pg">${p.ck}/${NEED}</span>`;
     if(p.amt>0) pills+=`<span class="pill pw">罰 $${p.amt}</span>`;
     const mini=days.map(d=>{
       const dk=fmt(d),st=getSt(m.id,dk),isT=d.getTime()===t.getTime(),lv=isLv(m.id,mon);
       return `<div class="md${lv?' lv':st==='checked'?' ok':isT?' td':''}"></div>`;
     }).join('');
-    const bc=p.onLv?'var(--blu)':p.ck>=3?'var(--grn)':'var(--acc)';
+    const bc=p.onLv?'var(--blu)':p.ck>=NEED?'var(--grn)':'var(--acc)';
     return `<div class="mc" style="${isMe?'border-color:'+c.c+';':''}">
       <div class="mchdr"><div class="mcl">
         <div class="av" style="width:32px;height:32px;font-size:12px;background:${c.bg};color:${c.c}">${m.name[0]}</div>
