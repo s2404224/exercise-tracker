@@ -12,7 +12,7 @@ export const FB = {
 // ════════════════════════════════════════
 
 // ── CONFIG ──────────────────────────────
-export const WEEK1=new Date(2026,5,29); WEEK1.setHours(0,0,0,0);
+export const WEEK1=new Date(2026,6,6); WEEK1.setHours(0,0,0,0);
 export const PAY=10,MAX_PAY=10,NEED=1;
 export const DAYS=['一','二','三','四','五','六','日'];
 export const MEDALS=['🥇','🥈','🥉'];
